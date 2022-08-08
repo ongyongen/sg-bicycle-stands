@@ -102,3 +102,6 @@ df_points = scraper.generate_equidistant_points()
 all_data = scraper.extract_bicycle_racks_data(df_points)
 df_final = scraper.clean_bicycle_racks_data(all_data)
 df_final_enhanced = scraper.enhance_bicycle_rack_desc(df_final)
+
+df_final_enhanced.to_csv('sg_bicycle_racks_data.csv')
+df_final_enhanced.to_json('sg_bicycle_racks_data.json', orient='records')
