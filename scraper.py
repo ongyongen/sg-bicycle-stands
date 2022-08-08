@@ -62,12 +62,43 @@ class Scraper:
         df_final['lat'] = extract_field('Latitude', all_data)
         df_final['lon'] = extract_field('Longitude', all_data)
         df_final['rack_type'] = extract_field('RackType', all_data)
+        df_final['rack_type'] = list(map(lambda x: x.lower().replace("_", " "), list(df_final["rack_type"])))
         df_final['rack_count'] = extract_field('RackCount', all_data)
         df_final['shelter'] = extract_field('ShelterIndicator', all_data)
+        df_final['shelter'] = list(map(lambda x: 'yes' if x == 'Y' else 'no', list(df_final['shelter'])))
         df_final = df_final.drop_duplicates(subset=['lat', 'lon'])
+        df_final = df_final.reset_index()
         return df_final
+    
+    # Extract more detailed address information from OneMap API for selected bicycle racks 
+    def enhance_bicycle_rack_desc(self, df_final):
+        
+        df_final_enhanced = df_final.copy()
+        for i in range(len(df_final_enhanced)):
+            desc = df_final_enhanced.loc[i,'desc']
+            if desc.split("-")[0].isnumeric() or desc.split('.')[0].isnumeric():
+                desc = str(int(float(desc.split("-")[0])))
+                desc = "0" + desc if len(desc) < 6 else desc
+                try:
+                    url = f"https://developers.onemap.sg/commonapi/search?searchVal={desc}&returnGeom=Y&getAddrDetails=Y&pageNum=1"
+                    response = requests.request("GET", url)
+                    data = response.json()['results'][0]
+                    building = data['BUILDING'] if data['BUILDING'] != "NIL" else ""
+                    block = data['BLK_NO'] if data['BLK_NO'] != "NIL" else ""
+                    road = data['ROAD_NAME'] if data['ROAD_NAME'] != "NIL" else ""
+                    name = f"{block} {road}" if len(building) == 0 else f"{building}, {block} {road}"
+                    df_final_enhanced.loc[i,'desc'] = name
+                    print(name)
+                except:
+                    print(desc)
+
+        df_final_enhanced['desc'] = list(map(lambda x: x.lower(), list(df_final_enhanced['desc'])))
+        df_final_enhanced['desc'] = list(map(lambda x: x.replace("_yb", " (yellow box)"), list(df_final_enhanced['desc'])))
+        df_final_enhanced['desc'] = list(map(lambda x: x.replace("block", "blk"), list(df_final_enhanced['desc'])))
+        return df_final_enhanced
 
 scraper = Scraper('A92ZBNTrRiiupgAXIckQkA==', 'singapore.geojson')
 df_points = scraper.generate_equidistant_points()
 all_data = scraper.extract_bicycle_racks_data(df_points)
 df_final = scraper.clean_bicycle_racks_data(all_data)
+df_final_enhanced = scraper.enhance_bicycle_rack_desc(df_final)
