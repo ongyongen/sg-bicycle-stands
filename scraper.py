@@ -31,7 +31,7 @@ class Scraper:
     
     # Use generated points to extract bicycle racks data from LTA API
     def extract_bicycle_racks_data(self, df_points):
-        all_data = []
+        all_data_raw = []
         for i in range(len(df_points)):
             lat = df_points.loc[i,'lat']
             lon = df_points.loc[i,'lon']
@@ -42,11 +42,11 @@ class Scraper:
             }
             response = requests.request("GET", url, headers=headers, data=payload)
             data = response.json()['value']
-            all_data.append(data)
+            all_data_raw.append(data)
             print(response)
             
-        all_data = list(filter(lambda x: x != [], all_data))
-
+        all_data_raw = list(filter(lambda x: x != [], all_data_raw))
+        all_data = [item for sublist in all_data_raw for item in sublist]
         return all_data
         
 
@@ -55,7 +55,7 @@ class Scraper:
         
         # Helper function to extract fields of interest from data
         def extract_field(field, all_data):
-            return list(map(lambda x: x[0][field], all_data))
+            return list(map(lambda x: x[field], all_data))
         
         df_final = pd.DataFrame(columns=["desc","lat", "lon", "rack_type", "rack_count", "shelter"])
         df_final['desc'] = extract_field('Description', all_data)
@@ -103,5 +103,5 @@ all_data = scraper.extract_bicycle_racks_data(df_points)
 df_final = scraper.clean_bicycle_racks_data(all_data)
 df_final_enhanced = scraper.enhance_bicycle_rack_desc(df_final)
 
-df_final_enhanced.to_csv('sg_bicycle_racks_data.csv')
-df_final_enhanced.to_json('sg_bicycle_racks_data.json', orient='records')
+df_final_enhanced.to_csv('sg_bicycle_racks_data_final.csv')
+df_final_enhanced.to_json('sg_bicycle_racks_data_final.json', orient='records')
